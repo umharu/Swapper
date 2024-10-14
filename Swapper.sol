@@ -7,14 +7,19 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract Swapper {
 
 
-    IERC20 public tokenA; // GAB
-    IERC20 public tokenB; // ARG
+    // Esta variable la dejamos para acceder a ella mientras el contrato este en desarrollo
+    address public thisContract;
 
+    // Direcciones del contrato
+    IERC20 private tokenA; // ETH
+    IERC20 private tokenB; // BTC
+
+    // Direcciones de usuarios de BTC y ETH
     address public userA;
     address public userB;
-    address public owner;
 
 
+    address private owner;
 
 
 
@@ -26,23 +31,21 @@ contract Swapper {
         userB = _userB;
         
         owner = msg.sender;
+        thisContract = address(this);
     }
 
 
+    
 
 
+    // Mapping
 
     struct Balances {
-        uint256 GABbalance;
-        uint256 ARGbalance;
+        uint256 ETHbalance;
+        uint256 BTCbalance;
     }
 
-    // Mappings
-    // Mappings
     mapping(address => Balances ) public Users;
-    mapping(address => uint256) public GABdeposits;
-    mapping(address => uint256) public ARGdeposits;
-
 
 
 
@@ -63,28 +66,77 @@ contract Swapper {
     }
 
 
+
+
+
     // DEPOSITAMOS TOKEN A
-    function deposit(uint256 _amount) external OnlyUserA {
-        if(Users[msg.sender].GABbalance == 0){
-           Users[msg.sender].GABbalance += _amount;
-        }
+    function depositUserA(uint256 _amount) external OnlyUserA {
+        if(tokenA.balanceOf(msg.sender) < _amount) revert ISwapper_CalledNotBalance();
+        Users[msg.sender].ETHbalance += _amount;
+
         bool status = tokenA.transferFrom(msg.sender, address(this), _amount);
         if(!status) revert ISWapper_DeniedOrNotAllowance();
-        GABdeposits[userA] += _amount;
-        emit Deposited(userA,  _amount);
+        emit Deposited(msg.sender,  _amount);
+
     }
 
 
 
+    // DEPOSITAMOS TOKEN B
+    function depositUserB(uint256 _amount) external OnlyUserB {
+        if(tokenB.balanceOf(msg.sender) < _amount) revert ISwapper_CalledNotBalance();
+        Users[msg.sender].BTCbalance += _amount;
+        bool status = tokenB.transferFrom(msg.sender, address(this), _amount);
+        if(!status) revert ISWapper_DeniedOrNotAllowance();
+        emit Deposited(msg.sender, _amount);
+        
+    }
 
-    function depositUserB() external OnlyUserB {}
+    
+    
+
+    // EJECUTAMOS EL SWAP
+    function swap() external OnlyOwner {
+        // Balance ETH usuario A
+        uint256 swapAmountA = Users[userA].ETHbalance;
+        // Balance BTC usuario B
+        uint256 swapAmountB = Users[userB].BTCbalance;
+
+        if(swapAmountA < 0 || swapAmountB < swapAmountA || swapAmountA < swapAmountB ) revert ISwapper_NoTokenToSwap();
+
+        Users[userA].BTCbalance += swapAmountB;
+        Users[userB].ETHbalance += swapAmountA;
+
+        Users[userA].ETHbalance -= swapAmountA;
+        Users[userB].BTCbalance -= swapAmountB;
+        
+        emit Swapped();
+    }
 
 
-    function swap() external OnlyOwner {}
 
-    function withdraw() external OnlyOwner{}
+    // RECLAMAMOS LOS TOKEN B DEL USER A LUEGO DEL SWAP
+    function withdrawUserA(uint256 _amount) external OnlyUserA{
+        if(tokenB.balanceOf(address(this)) < _amount) revert ISwapper_NoTokenToWithdraw();
+        uint256 amount = Users[userA].BTCbalance;
+        if(amount < 0 ) revert ISwapper_NoTokenToSwap();
+        bool status = tokenB.transfer(userA, _amount);
+        if(!status) revert ISWapper_DeniedOrNotAllowance();
+        Users[userA].BTCbalance = 0;
+        emit Withdrawn(msg.sender, _amount);
+    }
 
-    function withdrawUserB() external OnlyOwner{}
+
+    // RECLAMAMOS LOS TOKEN A DEL USER B LUEGO DEL SWAP
+    function withdrawUserB(uint256 _amount) external OnlyUserB{
+        if(tokenA.balanceOf(address(this)) < _amount) revert ISwapper_NoTokenToWithdraw();
+        uint amount = Users[userB].ETHbalance;
+        if(amount < 0) revert ISwapper_NoTokenToSwap();
+        bool status = tokenA.transfer(userB, _amount);
+        if(!status) revert ISWapper_DeniedOrNotAllowance();
+        Users[userB].ETHbalance = 0;
+        emit Withdrawn(msg.sender, _amount);
+    }
 
 
     
@@ -96,7 +148,12 @@ contract Swapper {
 
     // Retorna el owner
     function OWNER() external view returns (address _owner) {
-        return userB;
+        return owner;
+    }
+
+    // Retorna el balance de los usuarios
+    function userBalances(address _user) external view  returns (Balances memory){
+        return Users[_user];
     }
 
     // Retorna el tokenA
@@ -115,48 +172,70 @@ contract Swapper {
         return tokenA.balanceOf(address(this));
     }
 
+    function totalTokenBDeposited() external view returns (uint256 _totalTokenBDeposited){
+        return tokenB.balanceOf(address(this));
+    }
 
 
-
-
-
-
-
-
-
-
-    //ERRORS:
-    //ERRORS:
-    //ERRORS:
-
-    // Revierte en caso de que la funcion no haya sido llamada por el propietario del contrato
-    error ISwapper_OnlyOwner();
-
-    // Revierte si no se ha depositado suficiente ficha B
-    error ISwapper_NoTokenB();
-
-    // Se revierte si el propietario no tiene suficientes fichas B o A para retirarse.
-    error ISwapper_NoTokenToWithdraw();
-
-    // Se revierte si las funciones de deposito no las ejecutan el usuarioA o el usuario B
-    error ISWapper_UserNotAllowed();
-
-    // Se revierte si no tiene fue aprovada previamente o esta fuera del allowance
-    error ISWapper_DeniedOrNotAllowance();
-
-    //EVENTS:
-    //EVENTS:
-    //EVENTS:
-
-    // el usuario que deposita   =>  _user
-    // cantidad que se deposita  =>  _amount
-    event Deposited(address indexed _user, uint256 _amount); // <-- Evento se emite cuando un usuario deposita token A
 
     
+
+
+
+
+
+    //ERRORS:
+    error ISwapper_OnlyOwner(); // <--  Revierte en caso de que la funcion no haya sido llamada por el propietario del contrato
+
+    error ISwapper_CalledNotBalance(); // <--  Revierte si el usuario A no tiene tokens para gastar
+
+    error ISwapper_NotBalances(); // <--  Error si no hay balance
+
+    error ISwapper_NoTokenToSwap(); // <--   Revierte si no se ha depositado suficiente ficha B
+
+    error ISwapper_NoTokenToWithdraw(); // <--   Se revierte si el propietario no tiene suficientes fichas B o A para retirarse.
+
+    error ISWapper_UserNotAllowed(); // <--   Se revierte si las funciones de deposito no las ejecutan el usuarioA o el usuario B
+
+    error ISWapper_DeniedOrNotAllowance(); // <--   Se revierte si no tiene fue aprovada previamente o esta fuera del allowance
+
+
+
+
+
+    //EVENTS:
+    //EVENTS:
+    //EVENTS:
+
+    event Deposited(address indexed _user, uint256 _amount); // <-- Evento se emite cuando un usuario deposita token A
+
     event Swapped(); // <-- Evento se emite cuando los tokens se han swapeado
 
-
-    // el usuario que reclama     =>  _user
-    // la cantidad que se reclama =>  _amount
     event Withdrawn(address indexed _user, uint256 _amount); // <--  Evento se emite cuando un usuario retira token B
+
 }
+
+
+    
+
+
+/*
+
+UserA
+0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2
+ETH
+0x462A574f3EceBa19b6f8D1b2D557C1873ed397b7
+
+
+UserB
+0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db
+BTC
+0x4880c3921339adB0D7e0C3Be8c341D8b50973F56
+
+
+Owner
+0x5B38Da6a701c568545dCfcB03FcB875f56beddC4
+SwapContract
+0x86BA8f41279c2B029EE140698D09c0766A71419f
+
+*/

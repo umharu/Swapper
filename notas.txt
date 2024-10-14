@@ -1,0 +1,41 @@
+Para testear el swapper primero debemos:
+
+Utilizar remix:
+
+Copias los 3 archivos ".sol"
+
+Desplegar el contrato ETH que pertenecera al userA
+
+Desplegar el contrato BTC que pertenecera al userB
+
+Luego debemos buscar las direcciones del contrato y del usuario correspondiente para poder
+desplegar el contrato swapper.
+
+
+El contrato swapper pide 4 parametros, el addres del token A(ETH), el addres del userA, 
+el address del tokenB(BTC) y el address del userB
+
+
+Luego de desplegar tanto el usuario A como B deberan aprobar la direccion del contrato swapper
+
+Luego llamamos a "depositUserA" para depositar el balance en el contrato, esto depositara ETH 
+y quedara en custodia del contrato.
+
+Luego llamamos a "depositUserB" para depositar el balance en el contrato, esto depositara BTC
+y quedara en custodia del contrato.
+
+
+Si todo sale bien podemos usar las funciones de vista o mapping para ver los balances mappeados.
+
+Luego de testear esa parte, podemos llamar a la funcion swap, esto intercambia el token A del user A 
+por el token B del user B 
+
+Podemos volver a usar las funciones de vista para ver como cambiaron los balances.
+
+Ahora queda reclamar, llamams a withdrawUserA, pasa las comprobaciones y reclama los tokens que hay en balance
+y en el contrato,
+
+Lo mismo para el withdrawUserB
+
+Si todo salio ok, puede testear ahora los balances de los usuarios en los contratos de los tokens usando
+balanceOf.
