@@ -8,6 +8,12 @@ Desplegar el contrato ETH que pertenecera al userA
 
 Desplegar el contrato BTC que pertenecera al userB
 
+
+IMPORTANTE:
+    Debera tener en cuenta que para cada contrato debe ser desplegado con una address diferente. 
+
+    
+
 Luego debemos buscar las direcciones del contrato y del usuario correspondiente para poder
 desplegar el contrato swapper.
 
@@ -39,3 +45,5 @@ Lo mismo para el withdrawUserB
 
 Si todo salio ok, puede testear ahora los balances de los usuarios en los contratos de los tokens usando
 balanceOf.
+
+
