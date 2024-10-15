@@ -10,13 +10,13 @@ Distel Cristian
 
 ## Estructura del proyecto:
 
-##El proyecto esta organizado en los siguientes archivos:
+## El proyecto esta organizado en los siguientes archivos:
 Swapper.sol 
 Ethereum.sol
 Bitcoin.sol 
 
 
-Utilizar Remix:
+Para el despliegue del mismo hemos utilizado Remix:
 
 Se debe desplegar los tres archivos .sol dentro del IDE 
 
